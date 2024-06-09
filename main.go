@@ -22,7 +22,27 @@ func parseFlags() {
 	// process args
 	flag.Parse()
 
-	// *add is a pointer to add
+	if flag.NFlag() == 0 {
+		printGreet()
+		os.Exit(0)
+	}
+
+	if flag.NArg() > 0 && flag.Arg(0) == "--help" {
+		if flag.NArg() == 1 {
+			printGreet()
+		} else if flag.Arg(1) == "add" {
+			// print help information for "add" command
+			fmt.Println("help for 'add' command:")
+			fmt.Println("usage: conman --add <file/directory>")
+			fmt.Println("description: adds a file or directory to conman's directory in ~/.conman")
+		} else {
+			// print help for unknown command
+			fmt.Println("unknown command. run conman --help to see available commands.")
+		}
+		os.Exit(0)
+	}
+
+	// handle the "add" flag
 	if *add != "" {
 		fmt.Printf("add: %s\n", *add)
 		addFile(*add)
@@ -114,4 +134,25 @@ func fileExists(path string) (bool, error) {
 		return false, nil
 	}
 	return false, err
+}
+
+func printGreet() {
+	fmt.Println(
+		`
+                                             
+                                             
+  ___   ___   _ __   _ __ ___    __ _  _ __  
+ / __| / _ \ | '_ \ | '_ \ _ \  / _' || '_ \ 
+| (__ | (_) || | | || | | | | || (_| || | | |
+ \___| \___/ |_| |_||_| |_| |_| \__,_||_| |_|
+                                             
+         a (con)figuration (man)ager
+
+ commands:
+ 
+        help = prints this message
+            use help [command] for more detail on a command
+
+        add = adds a file to conman's directory in ~/.conman
+        `)
 }
