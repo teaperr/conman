@@ -69,7 +69,7 @@ func addFile(input string) {
 		return
 	}
 	if !exists {
-		choice := askYN("~/.conman doesn't exist. would you like to create it?", "y")
+		choice := askYN("~/.conman doesn't exist. would you like to create it? (Y/n)", "y")
 		if choice == "y" {
 			err := os.Mkdir(conmanDirAbs, 0755)
 			if err != nil {
@@ -138,9 +138,7 @@ func fileExists(path string) (bool, error) {
 
 func printGreet() {
 	fmt.Println(
-		`
-                                             
-                                             
+		`                                             
   ___   ___   _ __   _ __ ___    __ _  _ __  
  / __| / _ \ | '_ \ | '_ \ _ \  / _' || '_ \ 
 | (__ | (_) || | | || | | | | || (_| || | | |
