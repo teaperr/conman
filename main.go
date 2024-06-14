@@ -58,7 +58,7 @@ func addFile(input string, group string) {
 		fmt.Println("error getting home dir:", err)
 	}
 	// check if conman directory exists, and create it if not
-	conmanDirAbs := filepath.Join(userHome, CONMAN_DIR)
+	conmanDirAbs := path.Join(userHome, CONMAN_DIR)
 	exists, err := fileExists(conmanDirAbs)
 	if err != nil {
 		fmt.Println("error checking if conman dir exists:", err)
@@ -78,7 +78,8 @@ func addFile(input string, group string) {
 		}
 	}
 	// get path to the file in conman dir
-	newTarget := filepath.Join(conmanDirAbs, target)
+	newTarget := filepath.Join(conmanDirAbs, group)
+	newTarget = filepath.Join(newTarget, target)
 
 	inputFileExists, err := fileExists(absolutePath)
 	if err != nil {
@@ -114,6 +115,12 @@ func addFile(input string, group string) {
 	if err != nil {
 		fmt.Println("err adding info to database: ", err)
 		return
+	}
+
+	groupPath := filepath.Join(conmanDirAbs, group)
+	err = os.Mkdir(groupPath, 0755)
+	if err != nil {
+		fmt.Println("err creating group in conman dir: ", err)
 	}
 
 	// move the file to conman
@@ -213,7 +220,9 @@ func addToDatabase(group string, conmanDirAbs string, filePath, jsonFilePath str
 		fileInfoMap = make(map[string]interface{})
 	}
 
-	name := path.Join(conmanDirAbs, group)
+	name := path.Join(CONMAN_DIR, group)
+	file := path.Base(filePath)
+	name = path.Join(name, file)
 
 	// get file information
 	fileInfo, err := os.Stat(filePath)
