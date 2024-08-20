@@ -19,18 +19,15 @@ how do i install?
     go
     gcc-go
   
-  arch:
-    using yay:
-    ```yay -S conman```
+  arch using yay:
+      yay -S conman```
   other distros:
-  ```
-git clone https://github.com/teaperr/conman
-cd conman
-make
-sudo make install
-cd ../
-rm -r conman/
-  ```
+    git clone https://github.com/teaperr/conman
+    cd conman
+    make
+    sudo make install
+    cd ../
+    rm -r conman/
 
 how do i support development?
   suggestions for features, bug reports, pull requests etc are all greatly appreciated!
