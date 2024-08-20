@@ -11,7 +11,7 @@ md5sums=('SKIP')
 
 build() {
     cd "$srcdir/conman"
-    go build -o build/conman
+    go build -o conman
 }
 
 package() {
