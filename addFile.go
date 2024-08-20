@@ -3,16 +3,43 @@ package main
 import (
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
+	"strings"
 )
 
+// ispathinside checks if targetpath is inside basepath.
+func isPathInside(basePath, targetPath string) (bool, error) {
+	// resolve absolute paths
+	baseAbs, err := filepath.Abs(basePath)
+	if err != nil {
+		return false, fmt.Errorf("error resolving base path: %w", err)
+	}
+
+	targetAbs, err := filepath.Abs(targetPath)
+	if err != nil {
+		return false, fmt.Errorf("error resolving target path: %w", err)
+	}
+
+	// get the relative path from base to target
+	rel, err := filepath.Rel(baseAbs, targetAbs)
+	if err != nil {
+		return false, fmt.Errorf("error calculating relative path: %w", err)
+	}
+
+	// check if the relative path is valid and does not contain ".."
+	return !strings.HasPrefix(rel, ".."), nil
+}
+
 func addFile(input string, group string) {
-	// get the absolute file path
+	// get the file input as an absolute file path
 	absolutePath, err := filepath.Abs(input)
 	if err != nil {
 		fmt.Println("error getting path to file:", err)
 		return
 	}
+
+	target := filepath.Base(absolutePath)
 
 	userHome, err := os.UserHomeDir()
 	if err != nil {
@@ -20,20 +47,22 @@ func addFile(input string, group string) {
 		return
 	}
 
-	// define conman directory and configuration path
-	conmanDirAbs := filepath.Join(userHome, CONMAN_DIR)
-	conmanConfigAbs := filepath.Join(conmanDirAbs, "conman.json")
-
 	// check if conman directory exists, and create it if not
+	conmanDirAbs := path.Join(userHome, CONMAN_DIR)
 	exists, err := fileExists(conmanDirAbs)
 	if err != nil {
 		fmt.Println("error checking if conman dir exists:", err)
 		return
 	}
+
+	// conman config path
+	conmanConfigAbs := filepath.Join(conmanDirAbs, "conman.json")
+
 	if !exists {
-		choice := askYN("~/.conman doesn't exist. Would you like to create it? (Y/n)", "y")
+		choice := askYN("~/.conman doesn't exist. would you like to create it? (y/n)", "y")
 		if choice == "y" {
-			if err := os.Mkdir(conmanDirAbs, 0755); err != nil {
+			err := os.Mkdir(conmanDirAbs, 0755)
+			if err != nil {
 				fmt.Printf("error creating conman directory %s: %s\n", conmanDirAbs, err)
 				return
 			}
@@ -42,22 +71,21 @@ func addFile(input string, group string) {
 		}
 	}
 
-	// check if absolutePath is within conmanDirAbs
-	relPath, err := filepath.Rel(conmanDirAbs, absolutePath)
+	// check if input path is inside the conman directory
+	isInside, err := isPathInside(conmanDirAbs, absolutePath)
 	if err != nil {
-		fmt.Println("error determining relative path:", err)
+		fmt.Println("error checking if path is inside conman directory:", err)
 		return
 	}
-	if !filepath.IsAbs(relPath) {
-		fmt.Printf("path %s is within the conman directory. cannot add file.\n", absolutePath)
-		return
+	if isInside {
+		fmt.Println("the specified file is inside the conman directory. operation aborted.")
+		os.Exit(1)
 	}
 
-	// define new target path in conman directory
+	// get path to the file in conman dir
 	newTarget := filepath.Join(conmanDirAbs, group)
-	newTarget = filepath.Join(newTarget, filepath.Base(absolutePath))
+	newTarget = filepath.Join(newTarget, target)
 
-	// check if the input file exists
 	inputFileExists, err := fileExists(absolutePath)
 	if err != nil {
 		fmt.Println("error checking if file exists:", err)
@@ -68,7 +96,6 @@ func addFile(input string, group string) {
 		return
 	}
 
-	// check if file already exists in the database
 	existsInDatabase, err := checkExistsInDatabase(absolutePath, conmanConfigAbs)
 	if err != nil {
 		fmt.Println("error reading conman data:", err)
@@ -79,43 +106,44 @@ func addFile(input string, group string) {
 		os.Exit(1)
 	}
 
-	// check if the file is a symlink
+	// check if file is a symlink
 	isSymlink, err := isSymlink(absolutePath)
 	if err != nil {
-		fmt.Println("error checking if file is a symlink:", err)
-		return
+		fmt.Println("error checking if file is a symlink")
 	}
 	if isSymlink {
-		choice := askYN("specified file is a symlink, do you still want to add it? (y/N)", "n")
+		choice := askYN("specified file is a symlink, do you still want to add it? (y/n)", "n")
 		if choice == "n" {
-			return
+			os.Exit(0)
 		}
 	}
 
-	// add file to database
-	if err := addToDatabase(group, conmanDirAbs, absolutePath, conmanConfigAbs); err != nil {
+	err = addToDatabase(group, conmanDirAbs, absolutePath, conmanConfigAbs)
+	if err != nil {
 		fmt.Println("error adding info to database:", err)
 		return
 	}
 
-	// create group directory in conman if it does not exist
 	groupPath := filepath.Join(conmanDirAbs, group)
-	if err := os.MkdirAll(groupPath, 0755); err != nil {
-		fmt.Println("error creating group in conman dir:", err)
-		return
+	err = os.Mkdir(groupPath, 0755)
+	if err != nil {
+		if groupPath != conmanDirAbs {
+			fmt.Println("error creating group in conman dir:", err)
+		}
 	}
 
-	// move the file to the conman directory
-	if err := os.Rename(absolutePath, newTarget); err != nil {
+	// move the file to conman
+	err = os.Rename(absolutePath, newTarget)
+	if err != nil {
 		fmt.Println("error moving file:", err)
 		return
 	}
 
 	// create symlink for the configuration file
-	if err := os.Symlink(newTarget, absolutePath); err != nil {
+	err = os.Symlink(newTarget, absolutePath)
+	if err != nil {
 		fmt.Println("error creating symlink for file/directory:", err)
 		return
 	}
-
 	fmt.Println("file successfully added to conman!")
 }
